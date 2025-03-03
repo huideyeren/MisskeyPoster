@@ -71,6 +71,8 @@ miApi.MapPost("/postPict", (string host, string token, string text, string media
     }
 });
 
+app.Run();
+
 [JsonSerializable(typeof(Misharp.Response<EmptyResponse>))]
 internal partial class AppJsonSerializerContext : JsonSerializerContext
 {
