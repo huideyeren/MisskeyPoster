@@ -1,12 +1,12 @@
 # build the app.
 FROM mcr.microsoft.com/dotnet/sdk:8.0-bookworm-slim AS build-env
-WORKDIR /App
+WORKDIR /MisskeyPoster
 
 RUN apt update
 RUN apt install -y clang zlib1g-dev
 
 # copy source code to the working dir.
-COPY ./MisskeyPoster .
+COPY . .
 
 # restore as distinct layers.
 RUN dotnet restore MisskeyPoster.csproj
@@ -18,10 +18,10 @@ RUN dotnet publish MisskeyPoster.csproj -c Release -o out
 FROM mcr.microsoft.com/dotnet/aspnet:8.0-bookworm-slim
 
 # set the working dir.
-WORKDIR /App
+WORKDIR /MisskeyPoster
 
 # copy the built app from the build-env.
-COPY --from=build-env /App/out .
+COPY --from=build-env /MisskeyPoster/out .
 
 # command to run the app.
 ENTRYPOINT ["dotnet","MisskeyPoster.dll"]
