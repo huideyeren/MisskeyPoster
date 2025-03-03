@@ -5,7 +5,9 @@
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <InvariantGlobalization>true</InvariantGlobalization>
-        <PublishAot>true</PublishAot>
+        <PublishAot>false</PublishAot>
+        <IsAotCompatible>false</IsAotCompatible>
+        <PublishWithAspNetCoreTargetManifest>true</PublishWithAspNetCoreTargetManifest>
     </PropertyGroup>
 
     <ItemGroup>
