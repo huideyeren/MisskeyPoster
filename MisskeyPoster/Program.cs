@@ -1,4 +1,9 @@
 using System.Text.Json.Serialization;
+using System.IO;
+using System.Net;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
+using Misharp.Models;
 
 var builder = WebApplication.CreateSlimBuilder(args);
 
@@ -9,27 +14,65 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 
 var app = builder.Build();
 
-var sampleTodos = new Todo[]
+var miApi = app.MapGroup("/");
+
+var postText = async (string host, string token, string text) =>
 {
-    new(1, "Walk the dog"),
-    new(2, "Do the dishes", DateOnly.FromDateTime(DateTime.Now)),
-    new(3, "Do the laundry", DateOnly.FromDateTime(DateTime.Now.AddDays(1))),
-    new(4, "Clean the bathroom"),
-    new(5, "Clean the car", DateOnly.FromDateTime(DateTime.Now.AddDays(2)))
+    var mi = new Misharp.App(host: host, token: token);
+    return (await mi.NotesApi.Create(text: text)).Result;
 };
 
-var todosApi = app.MapGroup("/todos");
-todosApi.MapGet("/", () => sampleTodos);
-todosApi.MapGet("/{id}", (int id) =>
-    sampleTodos.FirstOrDefault(a => a.Id == id) is { } todo
-        ? Results.Ok(todo)
-        : Results.NotFound());
+var renote = async (string host, string token, string noteId) =>
+{
+    var mi = new Misharp.App(host: host, token: token);
+    return (await mi.NotesApi.Renotes(noteId: noteId)).Result;
+};
 
-app.Run();
+var fav = async (string host, string token, string favId, string emoji) =>
+{
+    var mi = new Misharp.App(host: host, token: token);
+    return (await mi.NotesApi.ReactionsApi.Create(noteId: favId, reaction: emoji)).Result;
+};
 
-public record Todo(int Id, string? Title, DateOnly? DueBy = null, bool IsComplete = false);
+var postTextWithPict = async (string host, string token, string text, string mediaUrl) =>
+{
+    var httpClient = new HttpClient();
+    var mi = new Misharp.App(host: host, token: token);
 
-[JsonSerializable(typeof(Todo[]))]
+    using (var request = new HttpRequestMessage(HttpMethod.Get, new Uri(mediaUrl)))
+    using (var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead))
+    {
+        if (response.StatusCode == HttpStatusCode.OK)
+        {
+            using (var content = response.Content)
+            using (var stream = await content.ReadAsStreamAsync())
+            {
+                var file = (await mi.DriveApi.FilesApi.Create(stream)).Result;
+                return (await mi.NotesApi.Create(text: text, fileIds: new List<string> { file.Id })).Result;
+            }
+        }
+        else throw new Exception("Post Failed.");
+    }
+};
+
+miApi.MapGet("/", () => "Hello, World!");
+miApi.MapPost("/postText", (string host, string token, string text) => Results.Ok(postText(host, token, text)));
+miApi.MapPost("/renote", (string host, string token, string noteId) => Results.Ok(renote(host, token, noteId)));
+miApi.MapPost("/fav", (string host, string token, string favId, string emoji = "❤️" ) => Results.Ok(fav(host, token, favId, emoji)));
+miApi.MapPost("/postPict", (string host, string token, string text, string mediaUrl) =>
+{
+    try
+    {
+        Results.Ok(postTextWithPict(host, token, text, mediaUrl));
+    }
+    catch (Exception e)
+    {
+        Results.BadRequest(e.Message);
+    }
+});
+
+[JsonSerializable(typeof(Misharp.Response<EmptyResponse>))]
 internal partial class AppJsonSerializerContext : JsonSerializerContext
 {
+    
 }
