@@ -1,9 +1,9 @@
 # build the app.
 FROM mcr.microsoft.com/dotnet/sdk:8.0-bookworm-slim AS build-env
-WORKDIR /MisskeyPoster
+WORKDIR /App
 
 # copy source code to the working dir.
-COPY . .
+COPY ./MisskeyPoster .
 
 # restore as distinct layers.
 RUN dotnet restore MisskeyPoster.csproj
@@ -15,10 +15,10 @@ RUN dotnet publish MisskeyPoster.csproj -c Release -o out
 FROM mcr.microsoft.com/dotnet/aspnet:8.0-bookworm-slim
 
 # set the working dir.
-WORKDIR /MisskeyPoster
+WORKDIR /App
 
 # copy the built app from the build-env.
-COPY --from=build-env /MisskeyPoster/out .
+COPY --from=build-env /App/out .
 
 # command to run the app.
 ENTRYPOINT ["dotnet","MisskeyPoster.dll"]
