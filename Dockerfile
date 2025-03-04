@@ -23,5 +23,7 @@ WORKDIR /app
 ## copy the built app from the build-env.
 COPY --from=build-env /app ./
 
+EXPOSE 8080
+
 # command to run the app.
 ENTRYPOINT ["dotnet", "MisskeyPoster.dll"]
