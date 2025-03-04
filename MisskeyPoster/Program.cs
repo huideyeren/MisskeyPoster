@@ -4,70 +4,79 @@ using System.Net;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Misharp.Models;
+using MisskeyPoster;
 
-var builder = WebApplication.CreateSlimBuilder(args);
+var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
     options.SerializerOptions.TypeInfoResolverChain.Insert(0, AppJsonSerializerContext.Default);
 });
 
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
 var app = builder.Build();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.Urls.Add("http://*:8080");
 
 var miApi = app.MapGroup("/");
 
-var postText = async (string host, string token, string text) =>
-{
-    var mi = new Misharp.App(host: host, token: token);
-    return (await mi.NotesApi.Create(text: text)).Result;
-};
+var misskeyHost = Environment.GetEnvironmentVariable("MISSKEY_HOST") ?? "misskey.io";
 
-var renote = async (string host, string token, string noteId) =>
-{
-    var mi = new Misharp.App(host: host, token: token);
-    return (await mi.NotesApi.Renotes(noteId: noteId)).Result;
-};
+var sensitiveKeyword = Environment.GetEnvironmentVariable("SENSITIVE_KEYWORD") ?? "お清楚ふぉと";
 
-var fav = async (string host, string token, string favId, string emoji) =>
-{
-    var mi = new Misharp.App(host: host, token: token);
-    return (await mi.NotesApi.ReactionsApi.Create(noteId: favId, reaction: emoji)).Result;
-};
-
-var postTextWithPict = async (string host, string token, string text, string mediaUrl) =>
+miApi.MapGet("/", () => "Hello, World!");
+miApi.MapPost("/postText", (TextPost post) => {
+    var mi = new Misharp.App(host: misskeyHost, token: post.I);
+    return mi.NotesApi.Create(text: post.Text, cw: post.Cw).Result.Result;
+});
+miApi.MapPost("/renote", (Renote post) => {
+    var mi = new Misharp.App(host: misskeyHost, token: post.I);
+    return mi.NotesApi.Renotes(noteId: post.NoteId).Result.Result;
+});
+miApi.MapPost("/fav", (Fav post) => {
+    var mi = new Misharp.App(host: misskeyHost, token: post.I);
+    return mi.NotesApi.ReactionsApi.Create(noteId: post.NoteId, reaction: post.Reaction).Result.Result;
+});
+miApi.MapPost("/postPict", (PictPost post) =>
 {
     var httpClient = new HttpClient();
-    var mi = new Misharp.App(host: host, token: token);
+    var mi = new Misharp.App(host: misskeyHost, token: post.I);
+    if (post.Text.Contains(sensitiveKeyword))
+    {
+        post.Cw = sensitiveKeyword;
+    }
 
-    using (var request = new HttpRequestMessage(HttpMethod.Get, new Uri(mediaUrl)))
-    using (var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead))
+    using (var request = new HttpRequestMessage(HttpMethod.Get, post.MediaUrl))
+    using (var response = httpClient.Send(request, HttpCompletionOption.ResponseHeadersRead))
     {
         if (response.StatusCode == HttpStatusCode.OK)
         {
             using (var content = response.Content)
-            using (var stream = await content.ReadAsStreamAsync())
+            using (var stream = content.ReadAsStream())
             {
-                var file = (await mi.DriveApi.FilesApi.Create(stream)).Result;
-                return (await mi.NotesApi.Create(text: text, fileIds: new List<string> { file.Id })).Result;
+                DriveFileModel file;
+                if (post.Cw is not null)
+                {
+                    file = mi.DriveApi.FilesApi.Create(file: stream, isSensitive: true).Result.Result;
+                }
+                else
+                {
+                    file = mi.DriveApi.FilesApi.Create(file: stream).Result.Result;
+                }
+                
+                var files = new List<string>{ file.Id };
+                return mi.NotesApi.Create(text: post.Text, cw: post.Cw, fileIds: files).Result.Result;
             }
         }
         else throw new Exception("Post Failed.");
-    }
-};
-
-miApi.MapGet("/", () => "Hello, World!");
-miApi.MapPost("/postText", (string host, string token, string text) => Results.Ok(postText(host, token, text)));
-miApi.MapPost("/renote", (string host, string token, string noteId) => Results.Ok(renote(host, token, noteId)));
-miApi.MapPost("/fav", (string host, string token, string favId, string emoji = "❤️" ) => Results.Ok(fav(host, token, favId, emoji)));
-miApi.MapPost("/postPict", (string host, string token, string text, string mediaUrl) =>
-{
-    try
-    {
-        Results.Ok(postTextWithPict(host, token, text, mediaUrl));
-    }
-    catch (Exception e)
-    {
-        Results.BadRequest(e.Message);
     }
 });
 
