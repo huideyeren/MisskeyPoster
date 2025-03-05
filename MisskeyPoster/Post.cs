@@ -28,5 +28,5 @@ public class Fav
 {
      public required string I { get; set; }
      public required string NoteId { get; set; }
-     public string Reaction { get; set; } = "❤️";
+     public string? Reaction { get; set; } = null;
 }
