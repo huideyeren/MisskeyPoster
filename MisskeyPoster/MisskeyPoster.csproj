@@ -11,7 +11,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="Misharp" Version="2025.2.1" />
+      <PackageReference Include="Misharp8" Version="2025.2.1" />
       <PackageReference Include="Swashbuckle.AspNetCore" Version="7.3.1" />
     </ItemGroup>
 

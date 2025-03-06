@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using System.Net;
+using Misharp.Controls;
 using Misharp.Models;
 using MisskeyPoster;
 
@@ -21,8 +22,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.Urls.Add("http://*:8080");
-
 var miApi = app.MapGroup("/");
 
 var misskeyHost = Environment.GetEnvironmentVariable("MISSKEY_HOST") ?? "misskey.io";
@@ -40,6 +39,9 @@ var postPictAsync = async (PictPost post) =>
 
     var httpClient = new HttpClient();
     var isSensitive = post.Cw != null;
+    var visibility = post.Cw is not null
+        ? NotesApi.NotesCreatePropertiesVisibilityEnum.Home
+        : NotesApi.NotesCreatePropertiesVisibilityEnum.Public;
     using (var request = new HttpRequestMessage(HttpMethod.Get, post.MediaUrl))
     using (var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead))
     {
@@ -60,7 +62,7 @@ var postPictAsync = async (PictPost post) =>
                     var file = (await mi.DriveApi.FilesApi.Create(file: fs, isSensitive: isSensitive)).Result;
                     Task.Delay(5000).Wait();
                     var fileIds = new List<string> { file.Id };
-                    var result = (await mi.NotesApi.Create(text: post.Text, cw: post.Cw, fileIds: fileIds)).Result;
+                    var result = (await mi.NotesApi.Create(text: post.Text, cw: post.Cw, fileIds: fileIds, visibility: visibility)).Result;
                     File.Delete($"./{fileName}");
                     return "OK: " + result.CreatedNote.Url;
                 }
@@ -77,8 +79,11 @@ var postPictAsync = async (PictPost post) =>
 
 miApi.MapGet("/", () => "Hello, World!");
 miApi.MapPost("/postText", async (TextPost post) => {
+    var visibility = post.Cw is not null
+        ? NotesApi.NotesCreatePropertiesVisibilityEnum.Home
+        : NotesApi.NotesCreatePropertiesVisibilityEnum.Public;
     var mi = new Misharp.App(host: misskeyHost, token: post.I);
-    return (await mi.NotesApi.Create(text: post.Text, cw: post.Cw)).Result;
+    return (await mi.NotesApi.Create(text: post.Text, cw: post.Cw, visibility: visibility)).Result;
 });
 miApi.MapPost("/renote", async (Renote post) => {
     var mi = new Misharp.App(host: misskeyHost, token: post.I);
