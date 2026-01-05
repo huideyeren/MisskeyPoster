@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using System.Net;
+using System.Text.RegularExpressions;
 using Misharp.Controls;
 using Misharp.Models;
 using MisskeyPoster;
@@ -30,14 +31,16 @@ var sensitiveKeyword = Environment.GetEnvironmentVariable("SENSITIVE_KEYWORD") ?
 
 var postPictAsync = async (PictPost post) =>
 {
-    var fileName = Path.GetFileName(post.MediaUrl.ToString());
+    var httpClient = new HttpClient();
+    string pattern = @"/\?.*$/";
+    var fileName = Path.GetFileName(Regex.Replace(post.MediaUrl.ToString(), pattern, ""));
     var mi = new Misharp.App(host: misskeyHost, token: post.I);
     if (post.Text.Contains(sensitiveKeyword))
     {
         post.Cw = sensitiveKeyword;
     }
 
-    var httpClient = new HttpClient();
+    
     var isSensitive = post.Cw != null;
     var visibility = post.Cw is not null
         ? NotesApi.NotesCreatePropertiesVisibilityEnum.Home
