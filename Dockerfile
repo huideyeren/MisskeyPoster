@@ -1,5 +1,5 @@
 # build the app.
-FROM mcr.microsoft.com/dotnet/sdk:8.0-bookworm-slim AS build-env
+FROM mcr.microsoft.com/dotnet/sdk:9.0-bookworm-slim AS build-env
 WORKDIR /MisskeyPoster
 
 ## copy source code to the working dir.
