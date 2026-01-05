@@ -12,7 +12,7 @@ RUN dotnet restore MisskeyPoster.csproj
 RUN dotnet publish MisskeyPoster.csproj -c Release -o /app
 #
 ### set up the container.
-FROM mcr.microsoft.com/dotnet/aspnet:8.0-bookworm-slim
+FROM mcr.microsoft.com/dotnet/aspnet:9.0-bookworm-slim
 #
 ## set the working dir.
 WORKDIR /app
