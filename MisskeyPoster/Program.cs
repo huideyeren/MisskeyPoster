@@ -32,8 +32,10 @@ var sensitiveKeyword = Environment.GetEnvironmentVariable("SENSITIVE_KEYWORD") ?
 var postPictAsync = async (PictPost post) =>
 {
     var httpClient = new HttpClient();
-    string pattern = @"/\?.*$/";
-    var fileName = Path.GetFileName(Regex.Replace(post.MediaUrl.ToString(), pattern, ""));
+    var mediaUrlString = post.MediaUrl.ToString();
+    var reg = new Regex(@"\?.*$");
+    var urlString = reg.Replace(mediaUrlString, "");
+    var fileName = Path.GetFileName(urlString);
     var mi = new Misharp.App(host: misskeyHost, token: post.I);
     if (post.Text.Contains(sensitiveKeyword))
     {
