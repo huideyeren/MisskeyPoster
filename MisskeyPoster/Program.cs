@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using System.Net;
 using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Misharp.Controls;
 using Misharp.Models;
 using MisskeyPoster;
@@ -29,7 +30,7 @@ var misskeyHost = Environment.GetEnvironmentVariable("MISSKEY_HOST") ?? "misskey
 
 var sensitiveKeyword = Environment.GetEnvironmentVariable("SENSITIVE_KEYWORD") ?? "お清楚ふぉと";
 
-var postPictAsync = async (PictPost post) =>
+var postPictAsync = async Task<Results<Ok, InternalServerError, NotFound>> (PictPost post) =>
 {
     var httpClient = new HttpClient();
     var mediaUrlString = post.MediaUrl.ToString();
@@ -69,34 +70,69 @@ var postPictAsync = async (PictPost post) =>
                     var fileIds = new List<string> { file.Id };
                     var result = (await mi.NotesApi.Create(text: post.Text, cw: post.Cw, fileIds: fileIds, visibility: visibility)).Result;
                     File.Delete($"./{fileName}");
-                    return "OK: " + result.CreatedNote.Url;
+                    Console.WriteLine(result);
+                    return TypedResults.Ok();
                 }
                 catch (Exception ex)
                 {
                     File.Delete($"./{fileName}");
-                    return $"Error: {ex.Message}";
+                    Console.WriteLine($"Error: {ex.Message}");
+                    return TypedResults.InternalServerError();
                 }
             }
         }
-        return "Can not download picture.";
+        Console.WriteLine(response.StatusCode);
+        Console.WriteLine("Can not download picture.");
+        return TypedResults.NotFound();
     }
 };
 
 miApi.MapGet("/", () => "Hello, World!");
-miApi.MapPost("/postText", async (TextPost post) => {
+miApi.MapPost("/postText", async Task<Results<Ok, InternalServerError>> (TextPost post) => {
     var visibility = post.Cw is not null
         ? NotesApi.NotesCreatePropertiesVisibilityEnum.Home
         : NotesApi.NotesCreatePropertiesVisibilityEnum.Public;
     var mi = new Misharp.App(host: misskeyHost, token: post.I);
-    return (await mi.NotesApi.Create(text: post.Text, cw: post.Cw, visibility: visibility)).Result;
+    try
+    {
+        var result = (await mi.NotesApi.Create(text: post.Text, cw: post.Cw, visibility: visibility)).Result;
+        Console.WriteLine(result);
+        return TypedResults.Ok();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error: {ex.Message}");
+        return TypedResults.InternalServerError();
+    }
+    
 });
-miApi.MapPost("/renote", async (Renote post) => {
+miApi.MapPost("/renote", async Task<Results<Ok, InternalServerError>> (Renote post) => {
     var mi = new Misharp.App(host: misskeyHost, token: post.I);
-    return (await mi.NotesApi.Renotes(noteId: post.NoteId)).Result;
+    try
+    {
+        var result = (await mi.NotesApi.Renotes(noteId: post.NoteId)).Result;
+        Console.WriteLine(result);
+        return TypedResults.Ok();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error: {ex.Message}");
+        return TypedResults.InternalServerError();
+    }
 });
-miApi.MapPost("/fav", async (Fav post) => {
+miApi.MapPost("/fav", async Task<Results<Ok, InternalServerError>> (Fav post) => {
     var mi = new Misharp.App(host: misskeyHost, token: post.I);
-    await mi.NotesApi.ReactionsApi.Create(noteId: post.NoteId, reaction: post.Reaction = "❤️");
+    try
+    {
+        var result = await mi.NotesApi.ReactionsApi.Create(noteId: post.NoteId, reaction: post.Reaction = "❤️");
+        Console.WriteLine(result);
+        return TypedResults.Ok();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error: {ex.Message}");
+        return TypedResults.InternalServerError();
+    }
 });
 miApi.MapPost("/postPict", async (PictPost post) => await postPictAsync(post));
 
