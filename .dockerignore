@@ -1,0 +1,14 @@
+# ローカルの成果物や認証情報をビルドコンテキストへ渡さない。
+.git
+.agents
+.codex
+.aws
+**/bin
+**/obj
+**/.DS_Store
+**/.env
+**/.env.*
+**/*.user
+**/*.suo
+.idea
+.vs
